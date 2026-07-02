@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}لوحة التحكم — مسابقة القناة{% endblock %}
+{% block extra_style %}
+<style>
+  .dash-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+  .logout{ color:var(--text-dim); text-decoration:none; font-size:.82rem; border:1px solid var(--line); padding:8px 14px; border-radius:8px; }
+  .link-col{ direction:ltr; text-align:right; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="dash-top">
+    <div>
+      <div class="eyebrow">لوحة المشرف</div>
+      <h1 style="font-size:1.3rem;">كل المشتركين وتفاصيلهم</h1>
+    </div>
+    <a class="logout" href="{{ url_for('logout') }}">تسجيل الخروج</a>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num mono">{{ participants|length }}</div><div class="label">عدد المشتركين</div></div>
+    <div class="stat"><div class="num mono">{{ total_joins }}</div><div class="label">إجمالي الانضمامات</div></div>
+  </div>
+
+  {% if participants|length == 0 %}
+    <div class="empty">ما فيه مشتركين بعد. شارك رابط <a class="link-plain" href="{{ url_for('home') }}">الصفحة الرئيسية</a> مع الناس عشان يسجلون.</div>
+  {% else %}
+  <table>
+    <thead>
+      <tr><th>#</th><th>الاسم</th><th>معرف تيليجرام</th><th>عدد الانضمامات</th></tr>
+    </thead>
+    <tbody>
+      {% for p in participants %}
+      <tr>
+        <td class="rank {% if loop.index==1 %}g1{% endif %}">{{ loop.index }}</td>
+        <td>{{ p.name }}</td>
+        <td class="mono link-col">{{ p.telegram_username or '—' }}</td>
+        <td class="count">{{ p.joins_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="text-align:center; margin-top:18px;">
+    <a class="link-plain" href="{{ url_for('leaderboard') }}">عرض صفحة المتصدرين العامة ←</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

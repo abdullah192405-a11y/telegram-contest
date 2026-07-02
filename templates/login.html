@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}دخول لوحة التحكم{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="eyebrow">للمشرف فقط</div>
+  <h1>لوحة التحكم</h1>
+  <p class="lead">أدخل كلمة المرور لعرض قائمة المشتركين وعدد الانضمامات لكل واحد.</p>
+  <form method="POST">
+    <label for="password">كلمة المرور</label>
+    <input type="password" id="password" name="password" required>
+    <button type="submit">دخول</button>
+  </form>
+</div>
+{% endblock %}

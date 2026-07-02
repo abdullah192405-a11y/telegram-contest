@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}المتصدرون — مسابقة القناة{% endblock %}
+{% block extra_style %}
+<style>
+  .lb-wrap{ max-width:760px; width:100%; margin:0 auto; padding:32px 20px; }
+  .lb-head{ text-align:center; margin-bottom:28px; }
+  .lb-head h1{ font-size:1.7rem; }
+  .lb-head p{ color:var(--text-dim); font-size:.88rem; margin-top:6px; }
+  .updated{ color:var(--text-dim); font-size:.72rem; margin-top:10px; font-family:'IBM Plex Mono',monospace; direction:ltr; }
+
+  .podium{ display:flex; align-items:flex-end; gap:14px; justify-content:center; margin:32px 0 28px; flex-wrap:wrap; }
+  .p-card{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:16px;
+    padding:20px 18px; text-align:center; width:150px; position:relative;
+    transition: transform .2s;
+  }
+  .p-card.first{ order:2; padding-top:30px; padding-bottom:26px; border-color:var(--gold); box-shadow:0 16px 40px -18px rgba(245,185,66,.45);}
+  .p-card.second{ order:1; }
+  .p-card.third{ order:3; }
+  .medal{ font-size:1.7rem; margin-bottom:8px; display:block; }
+  .p-name{ font-weight:800; font-size:.95rem; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .p-count{ font-family:'IBM Plex Mono',monospace; font-weight:900; font-size:1.4rem; color:var(--accent-2); }
+  .p-count span{ font-size:.68rem; color:var(--text-dim); font-weight:500; display:block; font-family:'Tajawal',sans-serif; margin-top:2px;}
+  .first .p-count{ color:var(--gold); }
+  .second .p-count{ color:var(--silver); }
+  .third .p-count{ color:var(--bronze); }
+
+  .rest-list{ background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .rest-row{ display:flex; align-items:center; gap:14px; padding:13px 18px; border-bottom:1px solid var(--line); }
+  .rest-row:last-child{ border-bottom:none; }
+  .rest-rank{ font-family:'IBM Plex Mono',monospace; color:var(--text-dim); width:20px; }
+  .rest-name{ flex:1; font-weight:600; font-size:.9rem; }
+  .rest-count{ font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--accent-2); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="lb-wrap">
+  <div class="lb-head">
+    <div class="eyebrow">أفضل 5 مشتركين</div>
+    <h1>لوحة المتصدرين</h1>
+    <p>الترتيب حسب عدد الانضمامات الفعلية عبر رابط كل مشترك</p>
+  </div>
+
+  <div class="stats" id="global-stats">
+    <div class="stat"><div class="num mono">{{ total_participants }}</div><div class="label">عدد المشتركين</div></div>
+    <div class="stat"><div class="num mono">{{ total_joins }}</div><div class="label">إجمالي الانضمامات</div></div>
+  </div>
+
+  {% if top5|length == 0 %}
+    <div class="empty">ما فيه نتائج بعد. كن أول المشتركين من <a class="link-plain" href="{{ url_for('home') }}">هذه الصفحة</a>.</div>
+  {% else %}
+  <div id="board">
+    <div class="podium" id="podium"></div>
+    <div class="rest-list" id="rest-list"></div>
+  </div>
+  <div class="updated" id="updated-at"></div>
+  {% endif %}
+</div>
+
+<script>
+const MEDALS = ["🥇","🥈","🥉"];
+const ORDER_CLASS = ["first","second","third"];
+
+function render(data){
+  const top5 = data.top5 || [];
+  document.querySelector('#global-stats .stat:nth-child(1) .num').textContent = data.total_participants;
+  document.querySelector('#global-stats .stat:nth-child(2) .num').textContent = data.total_joins;
+
+  const podium = document.getElementById('podium');
+  const restList = document.getElementById('rest-list');
+  if(!podium || !restList) return;
+
+  const top3 = top5.slice(0,3);
+  const rest = top5.slice(3,5);
+
+  podium.innerHTML = top3.map((p,i)=>`
+    <div class="p-card ${ORDER_CLASS[i]}">
+      <span class="medal">${MEDALS[i]}</span>
+      <div class="p-name">${p.name}</div>
+      <div class="p-count">${p.joins_count}<span>انضمام</span></div>
+    </div>
+  `).join("");
+
+  restList.innerHTML = rest.map((p,i)=>`
+    <div class="rest-row">
+      <div class="rest-rank">${i+4}</div>
+      <div class="rest-name">${p.name}</div>
+      <div class="rest-count">${p.joins_count}</div>
+    </div>
+  `).join("");
+
+  const now = new Date();
+  const el = document.getElementById('updated-at');
+  if(el) el.textContent = "آخر تحديث: " + now.toLocaleTimeString('ar-EG');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+async function refresh(){
+  try{
+    const res = await fetch("{{ url_for('api_leaderboard') }}");
+    const data = await res.json();
+    data.top5 = (data.top5 || []).map(p => ({...p, name: escapeHtml(p.name)}));
+    render(data);
+  }catch(e){ /* تجاهل فشل التحديث المؤقت */ }
+}
+
+render({
+  top5: {{ top5_json | safe }},
+  total_participants: {{ total_participants }},
+  total_joins: {{ total_joins }}
+});
+setInterval(refresh, 12000);
+</script>
+{% endblock %}

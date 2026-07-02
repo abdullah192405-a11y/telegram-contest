@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}أنشئ حسابك واحصل على رابطك{% endblock %}
+{% block extra_style %}
+<style>
+  .layout{ display:flex; gap:40px; align-items:flex-start; max-width:920px; width:100%; flex-wrap:wrap; justify-content:center; }
+  .steps{ flex:1; min-width:260px; max-width:340px; padding-top:8px; }
+  .step{ display:flex; gap:14px; margin-bottom:26px; }
+  .step .n{
+    width:30px; height:30px; border-radius:50%; background:var(--bg-panel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace;
+    font-size:.82rem; color:var(--accent-2); font-weight:700; flex-shrink:0;
+  }
+  .step h3{ font-size:.95rem; margin-bottom:4px; }
+  .step p{ color:var(--text-dim); font-size:.83rem; line-height:1.6; }
+  .row2{ display:flex; gap:12px; }
+  .row2 > div{ flex:1; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="layout">
+  <div class="steps">
+    <div class="eyebrow">كيف تعمل المسابقة</div>
+    <div class="step">
+      <div class="n">1</div>
+      <div><h3>أنشئ حسابك</h3><p>سجّل اسمك ومعرف تيليجرام وكلمة مرور، وراح نجهز لك رابط انضمام خاص فيك.</p></div>
+    </div>
+    <div class="step">
+      <div class="n">2</div>
+      <div><h3>شارك رابطك</h3><p>انشره بقصتك أو مجموعاتك — الرابط يميّزك عن باقي المشتركين تلقائياً.</p></div>
+    </div>
+    <div class="step">
+      <div class="n">3</div>
+      <div><h3>ارجع بأي وقت</h3><p>سجّل الدخول لحسابك لاحقاً لمتابعة عدد انضماماتك وإعادة نسخ رابطك.</p></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin:0;">
+    <div class="eyebrow">إنشاء حساب</div>
+    <h1>احصل على رابط الدعوة الخاص بك</h1>
+    <p class="lead">أنشئ حساباً بسيطاً، وراح نجهز لك رابط انضمام خاص للقناة. شارك هذا الرابط فقط — وكل شخص ينضم عبره يُحسب لك تلقائياً.</p>
+    <form method="POST">
+      <label for="name">اسمك</label>
+      <input type="text" id="name" name="name" placeholder="مثال: أحمد" required>
+      <label for="username">معرفك على تيليجرام</label>
+      <input type="text" id="username" name="username" placeholder="username" required>
+      <div class="row2">
+        <div>
+          <label for="password">كلمة المرور</label>
+          <input type="password" id="password" name="password" placeholder="6 أحرف على الأقل" required minlength="6">
+        </div>
+        <div>
+          <label for="confirm">تأكيد كلمة المرور</label>
+          <input type="password" id="confirm" name="confirm" placeholder="أعد كتابتها" required minlength="6">
+        </div>
+      </div>
+      <button type="submit">إنشاء حسابي</button>
+    </form>
+    <div class="foot-note">عندك حساب مسبقاً؟ <a class="link-plain" href="{{ url_for('participant_login') }}">سجّل الدخول من هنا</a></div>
+  </div>
+</div>
+{% endblock %}

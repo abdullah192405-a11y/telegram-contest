@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}حسابي — مسابقة القناة{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="eyebrow">أهلاً، {{ participant.name }}</div>
+  <h1>حسابك</h1>
+  <p class="lead">هذا رابطك الخاص وعدد من انضم عبره حتى الآن. الرقم يتحدّث تلقائياً.</p>
+
+  <div class="stats" style="margin-bottom:22px;">
+    <div class="stat" style="text-align:center;">
+      <div class="num mono" id="my-count">{{ participant.joins_count }}</div>
+      <div class="label">انضمامات عبر رابطك</div>
+    </div>
+  </div>
+
+  <label>رابطك الخاص</label>
+  <div style="background:var(--bg-panel-2); border:1px solid var(--line); border-radius:11px; padding:14px; margin-bottom:18px; word-break:break-all;" class="mono">
+    {{ participant.invite_link }}
+  </div>
+  <button id="copy-btn" onclick="copyLink()">نسخ الرابط</button>
+
+  <div class="foot-note">
+    <span class="mono" style="direction:ltr;">@{{ participant.telegram_username }}</span> ·
+    <a class="link-plain" href="{{ url_for('leaderboard') }}">شاهد لوحة المتصدرين</a>
+  </div>
+</div>
+
+<script>
+function copyLink(){
+  navigator.clipboard.writeText({{ participant.invite_link | tojson }});
+  const btn = document.getElementById('copy-btn');
+  const original = btn.textContent;
+  btn.textContent = 'تم النسخ ✓';
+  setTimeout(()=>{ btn.textContent = original; }, 2000);
+}
+
+async function refreshMyStats(){
+  try{
+    const res = await fetch("{{ url_for('api_my_stats') }}");
+    if(!res.ok) return;
+    const data = await res.json();
+    if(typeof data.joins_count === 'number'){
+      document.getElementById('my-count').textContent = data.joins_count;
+    }
+  }catch(e){ /* تجاهل فشل التحديث المؤقت */ }
+}
+setInterval(refreshMyStats, 10000);
+</script>
+{% endblock %}
