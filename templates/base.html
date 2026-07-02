@@ -63,6 +63,7 @@
   footer{ text-align:center; padding:20px; color:var(--text-dim); font-size:.78rem; border-top:1px solid var(--line); }
   footer a{ color:var(--text-dim); text-decoration:none; transition:color .15s; }
   footer a:hover{ color:var(--accent-2); }
+  .footer-credit{ margin-top:6px; font-size:.72rem; opacity:.85; }
   .card{
     background: var(--bg-panel);
     border: 1px solid var(--line);
@@ -145,6 +146,9 @@
 {% endwith %}
 {% block content %}{% endblock %}
 </main>
-<footer><a href="https://t.me/scholarship_alhwyji" target="_blank" rel="noopener noreferrer">منصة الحويجي التعليمية</a></footer>
+<footer>
+  <a href="https://t.me/scholarship_alhwyji" target="_blank" rel="noopener noreferrer">منصة الحويجي التعليمية</a>
+  <div class="footer-credit">تطوير المهندس عبدالله الحويجي</div>
+</footer>
 </body>
 </html>
