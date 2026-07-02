@@ -19,6 +19,7 @@ from db import (
     init_db,
     insert_participant,
     list_participants,
+    log_webhook_event,
 )
 
 app = Flask(__name__)
@@ -173,6 +174,23 @@ def api_my_stats():
     return jsonify({"joins_count": participant["joins_count"]})
 
 
+@app.route("/api/health")
+def api_health():
+    try:
+        init_db()
+        total_participants, total_joins = get_participant_stats()
+        return jsonify(
+            {
+                "ok": True,
+                "supabase": "connected",
+                "total_participants": total_participants,
+                "total_joins": total_joins,
+            }
+        )
+    except Exception as exc:
+        return jsonify({"ok": False, "supabase": "error", "error": str(exc)}), 500
+
+
 # ---------------------------------------------------------------
 # ويبهوك تيليجرام: يستقبل إشعار كل ما ينضم عضو جديد للقناة
 # ---------------------------------------------------------------
@@ -185,6 +203,8 @@ def webhook():
         new_status = chat_member.get("new_chat_member", {}).get("status")
         old_status = chat_member.get("old_chat_member", {}).get("status")
         invite_link_obj = chat_member.get("invite_link")
+        user = chat_member.get("new_chat_member", {}).get("user", {})
+        joined_user_id = user.get("id")
 
         joined = (
             new_status in ("member", "restricted")
@@ -192,13 +212,21 @@ def webhook():
         )
 
         if joined:
-            user = chat_member.get("new_chat_member", {}).get("user", {})
             joined_name = user.get("username") or user.get("first_name") or "مستخدم"
-            joined_user_id = user.get("id")
             participant = find_participant_for_invite(invite_link_obj)
 
             if participant and joined_user_id:
                 increment_join(participant["id"], joined_user_id, joined_name, utcnow())
+                log_webhook_event(
+                    "chat_member",
+                    joined_user_id,
+                    invite_link_obj,
+                    old_status,
+                    new_status,
+                    participant["id"],
+                    "join",
+                    update,
+                )
                 app.logger.info(
                     "Counted join for participant %s via %s",
                     participant["id"],
@@ -206,6 +234,16 @@ def webhook():
                     or (invite_link_obj or {}).get("name"),
                 )
             else:
+                log_webhook_event(
+                    "chat_member",
+                    joined_user_id,
+                    invite_link_obj,
+                    old_status,
+                    new_status,
+                    None,
+                    "join_unmatched",
+                    update,
+                )
                 app.logger.warning(
                     "Join not matched to participant. invite_link=%s new=%s old=%s",
                     invite_link_obj,
@@ -218,24 +256,31 @@ def webhook():
             and old_status in ("member", "restricted")
         )
 
-        if left:
-            user = chat_member.get("new_chat_member", {}).get("user", {})
-            joined_user_id = user.get("id")
-            if joined_user_id:
-                participant_id = decrement_join(joined_user_id, utcnow())
-                if participant_id:
-                    app.logger.info(
-                        "Counted leave for participant %s user %s",
-                        participant_id,
-                        joined_user_id,
-                    )
-                else:
-                    app.logger.warning(
-                        "Leave not matched to prior join. user=%s new=%s old=%s",
-                        joined_user_id,
-                        new_status,
-                        old_status,
-                    )
+        if left and joined_user_id:
+            participant_id = decrement_join(joined_user_id, utcnow())
+            log_webhook_event(
+                "chat_member",
+                joined_user_id,
+                invite_link_obj,
+                old_status,
+                new_status,
+                participant_id,
+                "leave" if participant_id else "leave_unmatched",
+                update,
+            )
+            if participant_id:
+                app.logger.info(
+                    "Counted leave for participant %s user %s",
+                    participant_id,
+                    joined_user_id,
+                )
+            else:
+                app.logger.warning(
+                    "Leave not matched to prior join. user=%s new=%s old=%s",
+                    joined_user_id,
+                    new_status,
+                    old_status,
+                )
 
     return {"ok": True}
 

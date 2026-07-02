@@ -56,16 +56,30 @@ def get_participant_by_link_name(link_name):
     return response.data[0] if response.data else None
 
 
-def get_participant_by_invite_link(invite_link):
+def get_participant_by_invite_link(invite_url):
+    if not invite_url:
+        return None
+
     response = (
         get_client()
         .table("participants")
         .select("*")
-        .eq("invite_link", invite_link)
+        .eq("invite_link", invite_url)
         .limit(1)
         .execute()
     )
-    return response.data[0] if response.data else None
+    if response.data:
+        return response.data[0]
+
+    if "..." in invite_url:
+        prefix = invite_url.split("...")[0]
+        all_participants = get_client().table("participants").select("*").execute().data
+        for participant in all_participants:
+            stored = participant.get("invite_link") or ""
+            if stored.startswith(prefix):
+                return participant
+
+    return None
 
 
 def find_participant_for_invite(invite_link_obj):
@@ -202,3 +216,28 @@ def decrement_join(joined_user_id, left_at):
         {"left_at": left_at.isoformat()}
     ).eq("id", log["id"]).execute()
     return log["participant_id"]
+
+
+def log_webhook_event(event_type, joined_user_id, invite_link_obj, old_status, new_status, matched_participant_id, action, raw_payload):
+    invite_url = ""
+    link_name = ""
+    if isinstance(invite_link_obj, dict):
+        invite_url = invite_link_obj.get("invite_link") or ""
+        link_name = invite_link_obj.get("name") or ""
+
+    try:
+        get_client().table("webhook_events").insert(
+            {
+                "event_type": event_type,
+                "joined_user_id": joined_user_id,
+                "invite_link": invite_url,
+                "link_name": link_name,
+                "old_status": old_status,
+                "new_status": new_status,
+                "matched_participant_id": matched_participant_id,
+                "action": action,
+                "raw_payload": raw_payload,
+            }
+        ).execute()
+    except Exception:
+        pass
