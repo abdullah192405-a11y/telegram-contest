@@ -56,6 +56,39 @@ def get_participant_by_link_name(link_name):
     return response.data[0] if response.data else None
 
 
+def get_participant_by_invite_link(invite_link):
+    response = (
+        get_client()
+        .table("participants")
+        .select("*")
+        .eq("invite_link", invite_link)
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+
+def find_participant_for_invite(invite_link_obj):
+    if not invite_link_obj or not isinstance(invite_link_obj, dict):
+        return None
+
+    link_name = invite_link_obj.get("name")
+    invite_url = invite_link_obj.get("invite_link")
+
+    if link_name:
+        participant = get_participant_by_link_name(link_name)
+        if participant:
+            return participant
+        participant = get_participant_by_link_name(link_name[:32])
+        if participant:
+            return participant
+
+    if invite_url:
+        return get_participant_by_invite_link(invite_url)
+
+    return None
+
+
 def insert_participant(name, username, password_hash, invite_link, link_name, created_at):
     response = (
         get_client()

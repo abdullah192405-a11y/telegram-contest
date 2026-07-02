@@ -2,15 +2,16 @@ import os
 import json
 import string
 import random
+import logging
 from datetime import datetime, timezone
 from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 
 from db import (
+    find_participant_for_invite,
     get_leaderboard_rows,
     get_participant_by_id,
-    get_participant_by_link_name,
     get_participant_by_username,
     get_participant_stats,
     increment_join,
@@ -21,6 +22,7 @@ from db import (
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
+logging.basicConfig(level=logging.INFO)
 
 # ==== الإعدادات (تحطها كمتغيرات بيئة في السيرفر) ====
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")          # توكن البوت من BotFather
@@ -85,12 +87,12 @@ def home():
             flash("هذا المعرف مسجّل مسبقاً — سجّل الدخول بدلاً من ذلك")
             return redirect(url_for("participant_login"))
 
-        link_name = f"{username}-{random_code(5)}"
+        link_name = f"{username}-{random_code(5)}"[:32]
 
         try:
             resp = requests.post(
                 f"{API_URL}/createChatInviteLink",
-                json={"chat_id": CHANNEL_ID, "name": link_name[:32]},
+                json={"chat_id": CHANNEL_ID, "name": link_name},
                 timeout=15,
             )
             data = resp.json()
@@ -183,17 +185,31 @@ def webhook():
         old_status = chat_member.get("old_chat_member", {}).get("status")
         invite_link_obj = chat_member.get("invite_link")
 
-        joined = new_status in ("member", "restricted") and old_status in ("left", "kicked")
+        joined = (
+            new_status in ("member", "restricted")
+            and old_status not in ("member", "administrator", "creator", "restricted")
+        )
 
-        if joined and invite_link_obj:
-            link_name = invite_link_obj.get("name")
+        if joined:
             user = chat_member.get("new_chat_member", {}).get("user", {})
             joined_name = user.get("username") or user.get("first_name") or "مستخدم"
+            participant = find_participant_for_invite(invite_link_obj)
 
-            if link_name:
-                participant = get_participant_by_link_name(link_name)
-                if participant:
-                    increment_join(participant["id"], joined_name, utcnow())
+            if participant:
+                increment_join(participant["id"], joined_name, utcnow())
+                app.logger.info(
+                    "Counted join for participant %s via %s",
+                    participant["id"],
+                    (invite_link_obj or {}).get("invite_link")
+                    or (invite_link_obj or {}).get("name"),
+                )
+            else:
+                app.logger.warning(
+                    "Join not matched to participant. invite_link=%s new=%s old=%s",
+                    invite_link_obj,
+                    new_status,
+                    old_status,
+                )
 
     return {"ok": True}
 
