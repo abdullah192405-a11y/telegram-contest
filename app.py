@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 
 from db import (
+    decrement_join,
     find_participant_for_invite,
     get_leaderboard_rows,
     get_participant_by_id,
@@ -193,10 +194,11 @@ def webhook():
         if joined:
             user = chat_member.get("new_chat_member", {}).get("user", {})
             joined_name = user.get("username") or user.get("first_name") or "مستخدم"
+            joined_user_id = user.get("id")
             participant = find_participant_for_invite(invite_link_obj)
 
-            if participant:
-                increment_join(participant["id"], joined_name, utcnow())
+            if participant and joined_user_id:
+                increment_join(participant["id"], joined_user_id, joined_name, utcnow())
                 app.logger.info(
                     "Counted join for participant %s via %s",
                     participant["id"],
@@ -210,6 +212,30 @@ def webhook():
                     new_status,
                     old_status,
                 )
+
+        left = (
+            new_status in ("left", "kicked")
+            and old_status in ("member", "restricted")
+        )
+
+        if left:
+            user = chat_member.get("new_chat_member", {}).get("user", {})
+            joined_user_id = user.get("id")
+            if joined_user_id:
+                participant_id = decrement_join(joined_user_id, utcnow())
+                if participant_id:
+                    app.logger.info(
+                        "Counted leave for participant %s user %s",
+                        participant_id,
+                        joined_user_id,
+                    )
+                else:
+                    app.logger.warning(
+                        "Leave not matched to prior join. user=%s new=%s old=%s",
+                        joined_user_id,
+                        new_status,
+                        old_status,
+                    )
 
     return {"ok": True}
 

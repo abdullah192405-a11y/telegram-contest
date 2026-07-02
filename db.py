@@ -146,19 +146,59 @@ def get_participant_stats():
     return total_participants, total_joins
 
 
-def increment_join(participant_id, joined_name, joined_at):
+def increment_join(participant_id, joined_user_id, joined_name, joined_at):
+    client = get_client()
+
+    active = (
+        client.table("joins_log")
+        .select("id")
+        .eq("joined_user_id", joined_user_id)
+        .is_("left_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if active.data:
+        return
+
     participant = get_participant_by_id(participant_id)
     if not participant:
         return
 
-    client = get_client()
     client.table("participants").update(
         {"joins_count": participant["joins_count"] + 1}
     ).eq("id", participant_id).execute()
     client.table("joins_log").insert(
         {
             "participant_id": participant_id,
+            "joined_user_id": joined_user_id,
             "joined_user_name": joined_name,
             "joined_at": joined_at.isoformat(),
         }
     ).execute()
+
+
+def decrement_join(joined_user_id, left_at):
+    client = get_client()
+    active = (
+        client.table("joins_log")
+        .select("*")
+        .eq("joined_user_id", joined_user_id)
+        .is_("left_at", "null")
+        .order("joined_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not active.data:
+        return None
+
+    log = active.data[0]
+    participant = get_participant_by_id(log["participant_id"])
+    if participant:
+        client.table("participants").update(
+            {"joins_count": max(0, participant["joins_count"] - 1)}
+        ).eq("id", participant["id"]).execute()
+
+    client.table("joins_log").update(
+        {"left_at": left_at.isoformat()}
+    ).eq("id", log["id"]).execute()
+    return log["participant_id"]

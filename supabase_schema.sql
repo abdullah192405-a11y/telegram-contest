@@ -14,8 +14,10 @@ CREATE TABLE IF NOT EXISTS participants (
 CREATE TABLE IF NOT EXISTS joins_log (
     id BIGSERIAL PRIMARY KEY,
     participant_id BIGINT REFERENCES participants(id) ON DELETE CASCADE,
+    joined_user_id BIGINT,
     joined_user_name TEXT,
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    left_at TIMESTAMPTZ
 );
 
 -- Block public API access; the Flask server connects with the postgres role directly.
